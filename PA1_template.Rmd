@@ -1,0 +1,114 @@
+---
+title: "Reproducible Research Project 1"
+author: "Maksym Yatlo"
+date: "Saturday, January 17, 2015"
+output: html_document
+---
+This document represents report for the project on Peer Assessment 1 of course [Reproducible Research](https://class.coursera.org/repdata-010) which can be found on [Coursera](http://www.coursera.org)    
+
+###Loading and preprocessing the data  
+
+``` {r echo=FALSE, results='hide'}
+  locale <- Sys.getlocale(category = "LC_TIME")
+  Sys.setlocale("LC_TIME", "English")
+```
+Load the data
+```{r echo=TRUE}
+  data<-read.csv("activity.csv")
+  head(data)
+```
+Process/transform the data (if necessary) into a format suitable for analysis.  
+Here I convert date field from factor to date class.
+```{r echo=TRUE}
+  data$date<-as.Date(as.character(data$date))
+```
+###What is mean total number of steps taken per day?
+Histogram of the total number of steps taken each day. 
+```{r echo=TRUE}
+  sumdaysteps<-tapply(data$steps,data$date,sum)
+  hist(sumdaysteps,xlab="steps per day",col="blue",lwd=2,breaks=10,
+       main="Number of steps per day")
+```  
+
+Calculate and report the mean and median total number of steps taken per day.  
+Mean
+```{r echo=TRUE}
+  mean_steps_per_day<-mean(sumdaysteps,na.rm=T)
+  mean_steps_per_day
+```
+Median
+```{r echo=TRUE}
+  median_steps_per_day<-median(sumdaysteps,na.rm=T)
+  median_steps_per_day
+```
+
+###What is the average daily activity pattern?
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
+```{r echo=TRUE}
+  stepsininterval<-tapply(data$steps,data$interval,mean,na.rm=TRUE)
+  plot(stepsininterval,type="l",col="red",xlab="Interval", ylab = "Average number of steps")
+```
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r echo=TRUE}
+  max_interval<-as.numeric(names(which.max(stepsininterval)))
+  max_interval
+```
+
+###Imputing missing values
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r echo=TRUE}
+  missing_values_number<-sum(is.na(data$steps))
+  missing_values_number
+```
+My strategy for filling in all of the missing values in the dataset - use mean for corresponding 5-minute interval.   
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r echo=TRUE}
+  data1<-data
+    for (i in 1:nrow(data1)) {
+    if (is.na(data1$steps[i])) {
+      data1$steps[i]<-stepsininterval[as.character(data$interval[i])]
+    }
+  }
+  head(data1)
+```
+Make a histogram of the total number of steps taken each day.
+```{r echo=TRUE}
+  sumdaysteps_update<-tapply(data1$steps,data1$date,sum)
+  hist(sumdaysteps_update,xlab="steps per day updated",col="blue",
+       lwd=2,breaks=10,main="Number of steps per day")
+```
+
+Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment?  
+Mean
+```{r echo=TRUE}
+  mean_steps_per_day_update<-mean(sumdaysteps_update)
+  mean_steps_per_day_update
+```
+Median
+```{r echo=TRUE}
+  median_steps_per_day_update<-median(sumdaysteps_update,na.rm=T)
+  median_steps_per_day_update
+```
+We see that after filling the data mean and median are equal to each other. Mean is the same to obtained before imputing of data, median slightly differs.    
+
+###Are there differences in activity patterns between weekdays and weekends?    
+Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r echo=TRUE}
+  wdays <- c("Monday","Tuesday","Wednesday","Thursday","Friday")
+  data1$day<-weekdays(data1$date)
+  data1$dayweek<-as.factor(ifelse(data1$day %in% wdays,"Weekday","Weekend"))
+```
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+```{r echo=TRUE}
+  stepsininterval_by_day<-with(data1,aggregate(steps,
+                                    by=list(interval,dayweek),mean))
+  names(stepsininterval_by_day)<-c("interval","dayweek","steps")
+  library(lattice)
+  xyplot(steps ~ interval | dayweek, stepsininterval_by_day, type = "l", layout = c(1, 2), 
+         ylab = "Average number of steps")
+```  
+``` {r echo=FALSE, results='hide'}
+  Sys.setlocale("LC_TIME", locale)
+```
+
